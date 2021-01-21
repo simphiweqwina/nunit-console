@@ -15,13 +15,17 @@ Task("DeleteObjectDirectories")
     .WithCriteria(BuildSystem.IsLocalBuild)
     .Does(() =>
     {
-        string pattern = "src/**/obj/";
-
         Information("Deleting object directories");
 
-        foreach (var dir in GetDirectories(pattern))
+        foreach (var dir in GetDirectories("src/**/obj/"))
             DeleteDirectory(dir, new DeleteDirectorySettings() { Recursive = true });
     });
+
+// NOTE: Any project to which this file is added is required to have a 'Clean' target
+Task("CleanAll")
+    .Description("Perform standard 'Clean' followed by deleting object directories")
+    .IsDependentOn("Clean")
+    .IsDependentOn("DeleteObjectDirectories");
 
 //////////////////////////////////////////////////////////////////////
 // CHECK FOR MISSING AND NON-STANDARD FILE HEADERS
