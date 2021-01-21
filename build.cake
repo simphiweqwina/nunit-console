@@ -1,5 +1,6 @@
 #load ci.cake
 #load package-checks.cake
+#load local-tasks.cake
 
 // Install Tools
 #tool NuGet.CommandLine&version=5.3.1
