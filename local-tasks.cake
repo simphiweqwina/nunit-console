@@ -106,16 +106,7 @@ private List<string> GetHeader(FilePath file)
     return header;
 }
 
-private void ListFilesWithNoHeader()
-{
-}
-
-private void ListFilesWithNonStandardHeader()
-{
-}
-
 private string RelPathTo(FilePath file)
 {
     return file.ToString().Substring(CD_LENGTH);
 }
-
