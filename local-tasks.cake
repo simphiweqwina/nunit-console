@@ -7,6 +7,8 @@
 // Since the tasks are intended for use by the NUnit Project, it follows
 // certain conventions and will need to be modified for use elsewhere.
 
+using System.Linq;
+
 //////////////////////////////////////////////////////////////////////
 // DELETE ALL OBJ DIRECTORIES
 //////////////////////////////////////////////////////////////////////
@@ -32,6 +34,11 @@ Task("CleanAll")
 //////////////////////////////////////////////////////////////////////
 
 static readonly int CD_LENGTH = Environment.CurrentDirectory.Length + 1;
+
+static readonly string[] EXEMPT_FILES = new [] {
+    "AssemblyInfo.cs",
+    "Options.cs"
+};
 
 // Standard Header. Change this for each project as needed.
 static readonly string[] STD_HDR = new [] {
@@ -85,7 +92,7 @@ private List<FilePath> GetFilesToCheck()
 {
     var files = new List<FilePath>();
     foreach(var file in GetFiles("src/**/*.cs"))
-        if (file.GetFilename().ToString().ToLower() != "assemblyinfo.cs")
+        if (!EXEMPT_FILES.Contains(file.GetFilename().ToString()))
             files.Add(file);
     return files;
 }
