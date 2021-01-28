@@ -194,6 +194,7 @@ MSBuildSettings CreateMSBuildSettings(string target)
 
 Task("Build")
     .Description("Builds the engine and console") 
+    .IsDependentOn("CheckHeaders")
     .IsDependentOn("UpdateAssemblyInfo")
     .Does(() =>
     {
@@ -813,7 +814,6 @@ Task("TestEngine")
 
 Task("Test")
     .Description("Builds and tests the engine")
-    .IsDependentOn("CheckHeaders")
     .IsDependentOn("TestEngine")
     .IsDependentOn("TestConsole");
 
