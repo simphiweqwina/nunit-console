@@ -1,5 +1,6 @@
 #load ci.cake
 #load package-checks.cake
+#load header-check.cake
 #load local-tasks.cake
 
 // Install Tools
@@ -812,6 +813,7 @@ Task("TestEngine")
 
 Task("Test")
     .Description("Builds and tests the engine")
+    .IsDependentOn("CheckHeaders")
     .IsDependentOn("TestEngine")
     .IsDependentOn("TestConsole");
 
