@@ -1,6 +1,8 @@
 #load "./constants.cake"
 #load "./patch-assembly-info.cake"
 #load "./package-checks.cake"
+#load "./test-results.cake"
+#load "./package-tests.cake"
 
 public class BuildParameters
 {
@@ -20,13 +22,47 @@ public class BuildParameters
 		_context = context;
 		_buildSystem = _context.BuildSystem();
 
-		//Target = _context.TargetTask.Name;
-		//TasksToExecute = _context.TasksToExecute.Select(t => t.Name);
+        //Target = _context.TargetTask.Name;
+        //TasksToExecute = _context.TasksToExecute.Select(t => t.Name);
 
-		Configuration = context.Argument("configuration", DEFAULT_CONFIGURATION);
-        ProductVersion = context.Argument("productVersion", DEFAULT_PRODUCT_VERSION);
+        Configuration = context.Argument("configuration", DEFAULT_CONFIGURATION);
+        PackageVersion = context.Argument("productVersion", DEFAULT_PRODUCT_VERSION);
 
-		ProjectDirectory = context.Environment.WorkingDirectory.FullPath + "/";
+        var dash = PackageVersion.IndexOf('-');
+        var version = dash > 0
+            ? PackageVersion.Substring(0, dash)
+            : PackageVersion;
+
+        if (IsRunningOnAppVeyor)
+        {
+            var buildNumber = _buildSystem.AppVeyor.Environment.Build.Number.ToString("00000");
+            var branch = _buildSystem.AppVeyor.Environment.Repository.Branch;
+            var isPullRequest = _buildSystem.AppVeyor.Environment.PullRequest.IsPullRequest;
+
+            if (branch == "master" && !isPullRequest)
+            {
+                PackageVersion = version + "-dev-" + buildNumber;
+            }
+            else
+            {
+                var suffix = "-ci-" + buildNumber;
+
+                if (isPullRequest)
+                    suffix += "-pr-" + _buildSystem.AppVeyor.Environment.PullRequest.Number;
+                else if (_buildSystem.AppVeyor.Environment.Repository.Branch.StartsWith("release", StringComparison.OrdinalIgnoreCase))
+                    suffix += "-pre-" + buildNumber;
+                else
+                    suffix += "-" + System.Text.RegularExpressions.Regex.Replace(branch, "[^0-9A-Za-z-]+", "-");
+
+                // Nuget limits "special version part" to 20 chars. Add one for the hyphen.
+                if (suffix.Length > 21)
+                    suffix = suffix.Substring(0, 21);
+
+                PackageVersion = version + suffix;
+            }
+        }
+
+        ProjectDirectory = context.Environment.WorkingDirectory.FullPath + "/";
 
 		//MyGetApiKey = _context.EnvironmentVariable(MYGET_API_KEY);
 		//NuGetApiKey = _context.EnvironmentVariable(NUGET_API_KEY);
@@ -96,7 +132,7 @@ public class BuildParameters
 	public ICakeContext Context => _context;
 
 	public string Configuration { get; }
-    public string ProductVersion { get; }
+    public string PackageVersion { get; }
 
 	//public BuildVersion BuildVersion { get; }
 	//public string PackageVersion => BuildVersion.PackageVersion;
@@ -123,13 +159,14 @@ public class BuildParameters
 	public string ChocoDirectory => ProjectDirectory + "choco/";
 	public string PackageDirectory => _context.Argument("artifact-dir", ProjectDirectory + "package") + "/";
     public string ImageDirectory => ProjectDirectory + "images/";
-    public string CurrentImageDirectory => ImageDirectory + $"NUnit-{ProductVersion}/";
+    public string CurrentImageDirectory => ImageDirectory + $"NUnit-{PackageVersion}/";
     public string MsiDirectory => ProjectDirectory + "msi/";
     public string ExtensionsDirectory => ProjectDirectory + "extension-packages";
     public string TestDirectory => PackageDirectory + "test/";
     public string ZipTestDirectory => TestDirectory + "zip/";
     public string NuGetTestDirectory => TestDirectory + "nuget/";
     public string ChocolateyTestDirectory => TestDirectory + "choco/";
+    public string MsiTestDirectory => TestDirectory + "msi/";
 
     public string SolutionFile => ProjectDirectory + SOLUTION_FILE;
     public string EngineProject => EngineDirectory + "nunit.engine/nunit.engine.csproj";
@@ -142,15 +179,16 @@ public class BuildParameters
     public string Net20ConsoleRunner => OutputDirectory + "net20/nunit3-console.exe";
     public string NetCore31ConsoleRunner => OutputDirectory + "netcoreapp3.1/nunit3-console.dll";
 
-    public string ZipPackageName => "NUnit.Console" + "-" + ProductVersion + ".zip";
-    //public string NuGetPackageName => NUGET_PACKAGE_NAME + "." + PackageVersion + ".nupkg";
-    //public string ChocolateyPackageName => PACKAGE_NAME + "." + PackageVersion + ".nupkg";
-    //public string MetadataPackageName => METADATA_PACKAGE_NAME + "." + PackageVersion + ".nupkg";
+    public string ZipPackageName => $"NUnit.Console-{PackageVersion}.zip";
+    public string NuGetPackageName => $"NUnit.ConsoleRunner.{PackageVersion}.nupkg";
+    public string ChocolateyPackageName => $"nunit-console-runner.{PackageVersion}.nupkg";
+    public string MsiPackageName => $"NUnit.Console-{PackageVersion}.msi";
 
     public FilePath ZipPackage => new FilePath(PackageDirectory + ZipPackageName);
-    //public FilePath NuGetPackage => new FilePath(PackageDirectory + NuGetPackageName);
-    //public FilePath ChocolateyPackage => new FilePath(PackageDirectory + ChocolateyPackageName);
-    //public FilePath MetadataPackage => new FilePath(PackageDirectory + MetadataPackageName);
+    public FilePath NuGetPackage => new FilePath(PackageDirectory + NuGetPackageName);
+    public FilePath ChocolateyPackage => new FilePath(PackageDirectory + ChocolateyPackageName);
+    public FilePath MsiPackage => new FilePath(PackageDirectory + MsiPackageName);
+
     //public string GitHubReleaseAssets => _context.IsRunningOnWindows()
     //	? $"\"{ZipPackage},{NuGetPackage},{ChocolateyPackage},{MetadataPackage}\""
     //       : $"\"{ZipPackage},{NuGetPackage}\"";
@@ -238,7 +276,7 @@ public class BuildParameters
 		Console.WriteLine("IsRunningOnAppVeyor:          " + IsRunningOnAppVeyor);
 
 		Console.WriteLine("\nVERSIONING");
-		Console.WriteLine("ProductVersion:               " + ProductVersion);
+		Console.WriteLine("PackageVersion:               " + PackageVersion);
 		//Console.WriteLine("AssemblyVersion:              " + AssemblyVersion);
 		//Console.WriteLine("AssemblyFileVersion:          " + AssemblyFileVersion);
 		//Console.WriteLine("AssemblyInformationalVersion: " + AssemblyInformationalVersion);
